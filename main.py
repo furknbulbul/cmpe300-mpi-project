@@ -54,69 +54,140 @@ def distribute_lines(line_count):
     for i in range(Nworkers):
         comm.send(data_counts[i], dest=i+1, tag=1)
 
+def evenly_distributed_method():
 # master process
-if rank == 0:
-    
-    # args: sample_name, merge_method, test_name
-    sample_name = sys.argv[1] 
-    merge_method = sys.argv[2]
-    test_name = sys.argv[3]
+    if rank == 0:
+        
+        # args: sample_name, merge_method, test_name
+        sample_name = sys.argv[2] 
+#        merge_method = sys.argv[4]
+        test_name = sys.argv[6]
 
-    sample_file = open(sample_name, 'r')
-    lines = sample_file.readlines()
+        sample_file = open(sample_name, 'r')
+        lines = sample_file.readlines()
 
-    test_file = open(test_name, 'r')
-    test_lines = test_file.readlines()
-    
-    distribute_lines(len(lines)) # arrange line counts
-    
-    for i in range(len(lines)):
-        comm.send(lines[i], dest=i%Nworkers+1, tag=i) # send lines one by one to the workers
-    
-    # accumulated data
-    acc_bigram ={}
-    acc_unigram ={}
-    if (merge_method == "MASTER"):
+        test_file = open(test_name, 'r')
+        test_lines = test_file.readlines()
+        
+        distribute_lines(len(lines)) # arrange line counts
+        
+        for i in range(len(lines)):
+            comm.send(lines[i], dest=i%Nworkers+1, tag=i) # send lines one by one to the workers
+        
+        # accumulated data
+        acc_bigram ={}
+        acc_unigram ={}
+#        if (merge_method == "MASTER"):
         master_merge(acc_bigram, acc_unigram) # merge data 
-    
-    evaluate_test_data(test_lines, acc_bigram, acc_unigram) # evaluate probabilities
+        
+        evaluate_test_data(test_lines, acc_bigram, acc_unigram) # evaluate probabilities
 
+    else:
+        print("worker rank:"+ str(rank))
+        line_count = comm.recv(source=0, tag=1) # each workers get lines count information  
+        print("received number of sentences is {} by worker {}".format(line_count, rank) )
+
+        # holds data for every worker 
+        unigrams={}
+        bigrams={}
+
+        for i in range(line_count):
+            
+            line = comm.recv(source=0, tag=Nworkers*i+rank-1)
+            #print("line received by worker {}: {}".format(rank, line))
+            tokens = line.split()
+            sentence_length = len(tokens)-1 # do not count </s>
+            
+            # put tokens into dictionary, or increment value if exist 
+            for j in range(1, sentence_length):
+                unigrams[tokens[j]] = unigrams.get(tokens[j], 0) + 1
+            
+            # put tuple of tokens into dictionary, or increment value if exist
+            for j in range(1, sentence_length-1):
+                bigrams[(tokens[j], tokens[j+1])] = bigrams.get((tokens[j], tokens[j+1]), 0) + 1
+
+            #print("unigram sent to the master by {}: {}".format(rank, unigrams))
+            #print("bigram sent to the master by {}: {}".format(rank, bigrams))
+
+        # send calculated data to master with tags 21 and 22 
+        comm.send(unigrams, dest = 0, tag=21)
+        comm.send(bigrams, dest = 0, tag=22)
+        
+
+
+def sequential_method():
+    if rank == 0:
+        sample_name = sys.argv[2] 
+        test_name = sys.argv[6]
+
+        sample_file = open(sample_name, 'r')
+        lines = sample_file.readlines()
+
+        test_file = open(test_name, 'r')
+        test_lines = test_file.readlines()
+        
+        distribute_lines(len(lines)) # arrange line counts
+        
+        for i in range(len(lines)):
+            comm.send(lines[i], dest=i%Nworkers+1, tag=i) # send lines one by one to the workers
+        
+        # accumulated data
+        received_unigrams = comm.recv(source = Nworkers, tag=1)
+        received_bigrams = comm.recv(source = Nworkers, tag=2)
+        
+        evaluate_test_data(test_lines, received_bigrams, received_unigrams) # evaluate probabilities
+
+    else:
+        line_count = comm.recv(source=0, tag=1) # each workers get lines count information  
+        print("received number of sentences is {} by worker {}".format(line_count, rank) )
+
+        # holds data for every worker 
+        unigrams={}
+        bigrams={}
+
+        for i in range(line_count):
+            
+            line = comm.recv(source=0, tag=Nworkers*i+rank-1)
+            #print("line received by worker {}: {}".format(rank, line))
+            tokens = line.split()
+            sentence_length = len(tokens)-1 # do not count </s>
+            
+            # put tokens into dictionary, or increment value if exist 
+            for j in range(1, sentence_length):
+                unigrams[tokens[j]] = unigrams.get(tokens[j], 0) + 1
+            
+            # put tuple of tokens into dictionary, or increment value if exist
+            for j in range(1, sentence_length-1):
+                bigrams[(tokens[j], tokens[j+1])] = bigrams.get((tokens[j], tokens[j+1]), 0) + 1
+
+            #print("unigram sent to the master by {}: {}".format(rank, unigrams))
+            #print("bigram sent to the master by {}: {}".format(rank, bigrams))
+
+        if(rank > 1):
+            received_unigrams = comm.recv(source = rank-1, tag = 1)
+            received_bigrams = comm.recv(source = rank-1, tag = 2)
+
+            for unigram in received_unigrams.items():
+                word = unigram[0]
+                freq = unigram[1]
+                unigrams[word] = unigrams.get(word, 0) + freq
+
+            for bigram in received_bigrams.items():
+                couple_word = bigram[0]
+                freq = bigram[1]
+                bigrams[couple_word] = bigrams.get(couple_word, 0) + freq
+    
+        if(rank != Nworkers):
+            dest = rank + 1
+        else:
+            dest = 0
+        comm.send(unigrams, dest = dest, tag = 1)
+        comm.send(bigrams, dest = dest, tag = 2)
+
+
+merge_method = sys.argv[4]
+
+if (merge_method == "MASTER"):
+    evenly_distributed_method()
 else:
-    print("worker rank:"+ str(rank))
-    line_count = comm.recv(source=0, tag=1) # each workers get lines count information  
-    print("received number of sentences is {} by worker {}".format(line_count, rank) )
-
-    # holds data for every worker 
-    unigrams={}
-    bigrams={}
-
-    for i in range(line_count):
-        
-        line = comm.recv(source=0, tag=Nworkers*i+rank-1)
-        #print("line received by worker {}: {}".format(rank, line))
-        tokens = line.split()
-        sentence_length = len(tokens)-1 # do not count </s>
-        
-        # put tokens into dictionary, or increment value if exist 
-        for j in range(1, sentence_length):
-            unigrams[tokens[j]] = unigrams.get(tokens[j], 0) + 1
-        
-        # put tuple of tokens into dictionary, or increment value if exist
-        for j in range(1, sentence_length-1):
-            bigrams[(tokens[j], tokens[j+1])] = bigrams.get((tokens[j], tokens[j+1]), 0) + 1
-
-        #print("unigram sent to the master by {}: {}".format(rank, unigrams))
-        #print("bigram sent to the master by {}: {}".format(rank, bigrams))
-
-    # send calculated data to master with tags 21 and 22 
-    comm.send(unigrams, dest = 0, tag=21)
-    comm.send(bigrams, dest = 0, tag=22)
-    
-
-
-
-
-    
-   
-   
-
+    sequential_method()
