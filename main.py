@@ -8,6 +8,20 @@ rank = comm.Get_rank()
 Nworkers = size-1
 
 
+def read_args():
+    args =sys.argv
+
+    for i in range(len(args)):
+        if(args[i]=="--input_file"):
+            input_file = args[i+1] 
+        elif (args[i]=="--merge_method"):
+            merge_method = args[i+1] 
+        elif (args[i]=="--test_file"):
+            test_file = args[i+1] 
+    
+    return [input_file, merge_method, test_file]
+
+
 # calculate probability by using accumulated bigrams and unigrams
 def evaluate_test_data(test_lines, acc_bigram, acc_unigram):
     for test in test_lines:
@@ -54,19 +68,15 @@ def distribute_lines(line_count):
     for i in range(Nworkers):
         comm.send(data_counts[i], dest=i+1, tag=1)
 
-def evenly_distributed_method():
+def evenly_distributed_method(input_file, test_file):
 # master process
     if rank == 0:
         
-        # args: sample_name, merge_method, test_name
-        sample_name = sys.argv[2] 
-#        merge_method = sys.argv[4]
-        test_name = sys.argv[6]
 
-        sample_file = open(sample_name, 'r')
+        sample_file = open(input_file, 'r')
         lines = sample_file.readlines()
 
-        test_file = open(test_name, 'r')
+        test_file = open(test_file, 'r')
         test_lines = test_file.readlines()
         
         distribute_lines(len(lines)) # arrange line counts
@@ -115,15 +125,14 @@ def evenly_distributed_method():
         
 
 
-def sequential_method():
+def sequential_method(input_file, test_file):
     if rank == 0:
-        sample_name = sys.argv[2] 
-        test_name = sys.argv[6]
+        
 
-        sample_file = open(sample_name, 'r')
+        sample_file = open(input_file, 'r')
         lines = sample_file.readlines()
 
-        test_file = open(test_name, 'r')
+        test_file = open(test_file, 'r')
         test_lines = test_file.readlines()
         
         distribute_lines(len(lines)) # arrange line counts
@@ -185,9 +194,12 @@ def sequential_method():
         comm.send(bigrams, dest = dest, tag = 2)
 
 
-merge_method = sys.argv[4]
 
+args = read_args()
+input_file = args[0]
+merge_method = args[1]
+test_file = args[2]
 if (merge_method == "MASTER"):
-    evenly_distributed_method()
+    evenly_distributed_method(input_file, test_file)
 else:
-    sequential_method()
+    sequential_method(input_file, test_file)
