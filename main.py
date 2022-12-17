@@ -1,3 +1,8 @@
+# Student Name:
+# Student Number:
+# Compile Status: Compiling
+# Program Status: Working
+
 from mpi4py import MPI
 import sys
 
