@@ -90,7 +90,7 @@ def evenly_distributed_method(input_file, test_file):
         distribute_lines(len(lines)) # send line counts to the workers
         
         for i in range(len(lines)):
-            comm.send(lines[i], dest=i%Nworkers+1, tag=i) # send lines one by one to the workers
+            comm.send(lines[i], dest=i%Nworkers+1, tag=0) # send lines one by one to the workers
         
         # accumulated data
         acc_bigram ={}
@@ -110,7 +110,7 @@ def evenly_distributed_method(input_file, test_file):
         for i in range(line_count):
             
             # receive line from master
-            line = comm.recv(source=0, tag=Nworkers*i+rank-1)
+            line = comm.recv(source=0, tag=0)
             
             #parse line
             tokens = line.split()
@@ -145,7 +145,7 @@ def sequential_method(input_file, test_file):
         distribute_lines(len(lines)) # send line counts to the workers
         
         for i in range(len(lines)):
-            comm.send(lines[i], dest=i%Nworkers+1, tag=i) # send lines one by one to the workers
+            comm.send(lines[i], dest=i%Nworkers+1, tag=0) # send lines one by one to the workers
         
         # accumulated data
         received_unigrams = comm.recv(source = Nworkers, tag=1)
@@ -165,7 +165,7 @@ def sequential_method(input_file, test_file):
         for i in range(line_count):
             
             #receive line from master
-            line = comm.recv(source=0, tag=Nworkers*i+rank-1)
+            line = comm.recv(source=0, tag=0)
 
             #parse line
             tokens = line.split()
