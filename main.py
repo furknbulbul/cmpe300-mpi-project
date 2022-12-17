@@ -48,8 +48,8 @@ def evaluate_test_data(test_lines, acc_bigram, acc_unigram):
 def master_merge(acc_bigram, acc_unigram):
     
     for i in range(1, size):
-        received_unigrams=comm.recv(source=i, tag=21) # get unigrams from workers with tag 21
-        received_bigrams=comm.recv(source=i, tag=22)  # get unigrams from workers with tag 22
+        received_unigrams=comm.recv(source=i, tag=11) # get unigrams from workers with tag 11
+        received_bigrams=comm.recv(source=i, tag=12)  # get unigrams from workers with tag 12
 
         # accumulate unigrams
         for unigram in received_unigrams.items():
@@ -124,9 +124,9 @@ def evenly_distributed_method(input_file, test_file):
             for j in range(1, sentence_length-1):
                 bigrams[(tokens[j], tokens[j+1])] = bigrams.get((tokens[j], tokens[j+1]), 0) + 1
 
-        # send calculated data to master with tags 21 and 22 
-        comm.send(unigrams, dest = 0, tag=21)
-        comm.send(bigrams, dest = 0, tag=22)
+        # send calculated data to master with tags 11 and 12 
+        comm.send(unigrams, dest = 0, tag=11)
+        comm.send(bigrams, dest = 0, tag=12)
         
 
 # run when merge method is WORKERS
