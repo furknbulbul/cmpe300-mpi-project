@@ -75,7 +75,7 @@ def distribute_lines(line_count):
         comm.send(data_counts[i], dest=i+1, tag=1)
 
 # run when merge method is MASTER
-def evenly_distributed_method(input_file, test_file):
+def master_merge_method(input_file, test_file):
     
     # master process
     if rank == 0:
@@ -130,7 +130,7 @@ def evenly_distributed_method(input_file, test_file):
         
 
 # run when merge method is WORKERS
-def sequential_method(input_file, test_file):
+def accumulated_method(input_file, test_file):
     
     # master process
     if rank == 0:
@@ -210,6 +210,6 @@ merge_method = args[1]
 test_file = args[2]
 
 if (merge_method == "MASTER"):
-    evenly_distributed_method(input_file, test_file)
+    master_merge_method(input_file, test_file)
 else:
-    sequential_method(input_file, test_file)
+    accumulated_method(input_file, test_file)
