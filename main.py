@@ -181,8 +181,8 @@ def accumulated_method(input_file, test_file):
 
         # get data from previous worker and merge with its calculated data
         if(rank > 1):
-            received_unigrams = comm.recv(source = rank-1, tag = 1) # receive unigram data from previous worker
-            received_bigrams = comm.recv(source = rank-1, tag = 2) # receive bigram data form previous worker
+            received_unigrams = comm.recv(source = rank-1, tag = 1) # receive unigram data from the previous worker
+            received_bigrams = comm.recv(source = rank-1, tag = 2) # receive bigram data from the previous worker
 
             for unigram in received_unigrams.items():
                 word = unigram[0]
