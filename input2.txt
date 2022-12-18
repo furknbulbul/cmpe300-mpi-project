@@ -1,0 +1,4 @@
+<s> this is the second programming project of cmpe300 </s>
+<s> working on the project was fun </s>
+<s> France will be the second team </s>
+<s> working as a team requires effort </s>

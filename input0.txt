@@ -1,0 +1,3 @@
+<s> i love learning new technologies </s>
+<s> new technologies replace the old ones </s>
+<s> learning new programming skills is necessary </s>
