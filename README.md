@@ -1,1 +1,1 @@
-# cmpe300_project2
+# cmpe300 mpi project
